@@ -16,7 +16,7 @@
 import physicalgraph.zigbee.zcl.DataType
 
 metadata {
-	definition(name: "SmartSense Temp/Humidity Sensor", namespace: "smartthings", author: "SmartThings", runLocally: true, minHubCoreVersion: '000.017.0012', executeCommandsLocally: false, ocfDeviceType: "oic.d.thermostat") {
+	definition(name: "Hej Temp/Humidity Sensor", namespace: "smartthings", author: "SmartThings modified by sunde41", runLocally: true, minHubCoreVersion: '000.017.0012', executeCommandsLocally: false, ocfDeviceType: "oic.d.thermostat") {
 		capability "Configuration"
 		capability "Battery"
 		capability "Refresh"
@@ -92,14 +92,25 @@ def parse(String description) {
 		} else if (descMap?.clusterInt == zigbee.TEMPERATURE_MEASUREMENT_CLUSTER && descMap.commandInt == 0x07) {
 			if (descMap.data[0] == "00") {
 				log.debug "TEMP REPORTING CONFIG RESPONSE: $descMap"
-				sendEvent(name: "checkInterval", value: 60 * 12, displayed: false, data: [protocol: "zigbee", hubHardwareId: device.hub.hardwareID])
+				sendEvent(name: "checkInterval", value: 2 * 60 * 60 + 1 * 60, displayed: false, data: [protocol: "zigbee", hubHardwareId: device.hub.hardwareID])
 			} else {
 				log.warn "TEMP REPORTING CONFIG FAILED- error code: ${descMap.data[0]}"
 			}
 		}
 	} else if (map.name == "temperature") {
-		if (tempOffset) {
-			map.value = (int) map.value + (int) tempOffset
+		def value = ((description - "temperature: ").trim()) as Float 
+        if (getTemperatureScale() == "C") {
+        	if (tempOffset) {
+				map.value = (Math.round(value * 10))/ 10 + tempOffset as Float
+            } else {
+				map.value = (Math.round(value * 10))/ 10 as Float
+			}            	
+		} else {
+        	if (tempOffset) {
+				map.value = (Math.round(value * 90/5))/10 + 32 + offset as Float
+            } else {
+				map.value = (Math.round(value * 90/5))/10 + 32 as Float
+			}            	
 		}
 		map.descriptionText = temperatureScale == 'C' ? '{{ device.displayName }} was {{ value }}°C' : '{{ device.displayName }} was {{ value }}°F'
 		map.translatable = true
@@ -178,7 +189,7 @@ def refresh() {
 def configure() {
 	// Device-Watch allows 2 check-in misses from device + ping (plus 1 min lag time)
 	// enrolls with default periodic reporting until newer 5 min interval is confirmed
-	sendEvent(name: "checkInterval", value: 2 * 60 * 60 + 1 * 60, displayed: false, data: [protocol: "zigbee", hubHardwareId: device.hub.hardwareID])
+	sendEvent(name: "checkInterval", value: 1 * 60, displayed: false, data: [protocol: "zigbee", hubHardwareId: device.hub.hardwareID])
 
 	log.debug "Configuring Reporting and Bindings."
 
